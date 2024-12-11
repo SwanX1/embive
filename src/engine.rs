@@ -71,13 +71,13 @@ impl<M: Memory> Default for Config<M> {
 
 /// Embive Engine Struct
 #[non_exhaustive]
-pub struct Engine<'a, M: Memory> {
+pub struct Engine<M: Memory> {
     /// Program Counter.
     pub program_counter: u32,
     /// CPU Registers.
     pub registers: Registers,
     /// System Memory (code + RAM).
-    pub memory: &'a mut M,
+    pub memory: M,
     /// Engine Configuration.
     pub config: Config<M>,
     /// Memory reservation for atomic operations (addr, value).
@@ -85,14 +85,14 @@ pub struct Engine<'a, M: Memory> {
     pub(crate) memory_reservation: Option<(u32, i32)>,
 }
 
-impl<'a, M: Memory> Engine<'a, M> {
+impl<M: Memory> Engine<M> {
     /// Create a new engine.
     ///
     /// Arguments:
     /// - `code`: Code buffer, `u8` slice.
     /// - `ram`: RAM buffer, mutable `u8` slice.
     /// - `config`: Engine configuration.
-    pub fn new(memory: &'a mut M, config: Config<M>) -> Result<Self, EmbiveError> {
+    pub fn new(memory: M, config: Config<M>) -> Result<Self, EmbiveError> {
         // Create the engine
         Ok(Engine {
             program_counter: 0,
@@ -203,7 +203,7 @@ impl<'a, M: Memory> Engine<'a, M> {
                 .unwrap();
 
             // Call the syscall function
-            match syscall_fn(nr, args, self.memory) {
+            match syscall_fn(nr, args, &mut self.memory) {
                 Ok(value) => {
                     // Clear error code
                     self.registers.inner[Register::A0 as usize] = 0;
@@ -236,8 +236,7 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let mut memory = SliceMemory::new(&[], &mut []);
-        let mut engine = Engine::new(&mut memory, Default::default()).unwrap();
+        let mut engine = Engine::new(SliceMemory::new(&[], &mut []), Default::default()).unwrap();
         engine.reset();
 
         assert_eq!(engine.program_counter, 0);
