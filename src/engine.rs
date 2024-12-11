@@ -1,5 +1,7 @@
 //! Engine Module
 
+use std::boxed::Box;
+
 use crate::error::EmbiveError;
 use crate::instruction::decode_execute;
 use crate::memory::Memory;
@@ -24,10 +26,9 @@ pub const SYSCALL_ARGS: usize = 7;
 ///
 /// Returns:
 /// - `Result<i32, i32>`: value (`a1`), error (`a0`).
-pub type SyscallFn<M> = fn(nr: i32, args: &[i32; SYSCALL_ARGS], memory: &mut M) -> Result<i32, i32>;
+pub type SyscallFn<M> = Box<dyn FnMut(i32, &[i32; SYSCALL_ARGS], &mut M) -> Result<i32, i32>>;
 
 /// Embive Engine Configuration Struct
-#[derive(Debug, PartialEq, Clone, Copy)]
 #[non_exhaustive]
 pub struct Config<M: Memory> {
     /// System call function (Called by `ecall` instruction).
@@ -69,7 +70,6 @@ impl<M: Memory> Default for Config<M> {
 }
 
 /// Embive Engine Struct
-#[derive(Debug)]
 #[non_exhaustive]
 pub struct Engine<'a, M: Memory> {
     /// Program Counter.
@@ -192,7 +192,7 @@ impl<'a, M: Memory> Engine<'a, M> {
     ///     - System call function is not set.
     #[inline(always)]
     pub(crate) fn syscall(&mut self) -> Result<(), EmbiveError> {
-        if let Some(syscall_fn) = self.config.syscall_fn {
+        if let Some(syscall_fn) = self.config.syscall_fn.as_mut() {
             // Syscall Number
             let nr = self.registers.inner[Register::A7 as usize];
 

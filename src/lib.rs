@@ -95,7 +95,7 @@
 //! - `instruction_limit`:
 //!     - Limit the number of instructions executed by the engine, yielding when the limit is reached.
 //!         - Disabled by default, no additional dependencies.
-#![cfg_attr(not(test), no_std)]
+#![feature(type_alias_impl_trait)]
 pub mod engine;
 pub mod error;
 mod instruction;
@@ -156,7 +156,7 @@ mod tests {
         let mut engine = Engine::new(
             &mut memory,
             Config {
-                syscall_fn: Some(syscall),
+                syscall_fn: Some(Box::new(syscall)),
                 ..Default::default()
             },
         )
